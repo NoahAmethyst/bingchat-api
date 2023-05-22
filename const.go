@@ -45,7 +45,7 @@ func (c ConversationStyle) TmpMessage() *SendMessage {
 		data = preciseStyle
 	}
 	msg := SendMessage{}
-	json.Unmarshal([]byte(data), &msg)
+	_ = json.Unmarshal([]byte(data), &msg)
 	return &msg
 }
 

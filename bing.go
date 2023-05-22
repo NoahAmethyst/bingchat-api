@@ -17,8 +17,6 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-var Timeout = time.Second * 30
-
 type BingChatHub struct {
 	sync.Mutex
 	wsConn            *websocket.Conn
@@ -28,6 +26,7 @@ type BingChatHub struct {
 	invocationId      int
 	sendMessage       *SendMessage
 	conversationStyle ConversationStyle
+	timeout           time.Duration
 }
 
 func (b *BingChatHub) buildHeaders(data map[string]string) http.Header {
@@ -43,26 +42,32 @@ type IBingChat interface {
 	Reset(style ...ConversationStyle)
 	SendMessage(msg string) (*MsgResp, error)
 	Style() ConversationStyle
+	Close()
+	CheckAlive() bool
 }
 
-func NewBingChat(cookiesJson []byte, style ConversationStyle) (IBingChat, error) {
+func NewBingChat(cookiesJson string, style ConversationStyle, timeout time.Duration) (IBingChat, error) {
 	var cookies []*http.Cookie
-	json.Unmarshal(cookiesJson, &cookies)
+	_ = json.Unmarshal([]byte(cookiesJson), &cookies)
 	return &BingChatHub{
+		timeout: timeout,
 		cookies: cookies,
 		client: &http.Client{
 			Transport: &http.Transport{
 				Proxy: http.ProxyFromEnvironment,
 			},
-			Timeout: Timeout,
+			Timeout: timeout,
 		},
 		conversationStyle: style,
 	}, nil
 }
 
+// Reset reset conversation style,the supported style list is:
+// ConversationCreateStyle
+// ConversationBalanceStyle
+// ConversationPreciseStyle
 func (b *BingChatHub) Reset(style ...ConversationStyle) {
 	if len(style) > 0 {
-		fmt.Println("Switch Style", style[0])
 		b.conversationStyle = style[0]
 	}
 	_ = b.wsConn.Close()
@@ -71,6 +76,27 @@ func (b *BingChatHub) Reset(style ...ConversationStyle) {
 	b.sendMessage = nil
 }
 
+// Close the websocket collection with new bing chat
+func (b *BingChatHub) Close() {
+	_ = b.wsConn.Close()
+}
+
+// CheckAlive check whether websocket collection is alive
+func (b *BingChatHub) CheckAlive() bool {
+	err := b.wsConn.WriteMessage(websocket.PingMessage, []byte{})
+	if err != nil {
+		return false
+	}
+	_, _, err = b.wsConn.ReadMessage()
+	if err != nil {
+		if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
+			return false
+		}
+	}
+	return true
+}
+
+// Style return current conversation style
 func (b *BingChatHub) Style() ConversationStyle {
 	return b.conversationStyle
 }
@@ -107,7 +133,7 @@ func (b *BingChatHub) createConversation() error {
 func (b *BingChatHub) initWsConnect() error {
 	dial := websocket.DefaultDialer
 	dial.Proxy = http.ProxyFromEnvironment
-	dial.HandshakeTimeout = Timeout
+	dial.HandshakeTimeout = b.timeout
 	dial.EnableCompression = true
 
 	dial.TLSClientConfig = &tls.Config{}
@@ -145,11 +171,12 @@ type MsgResp struct {
 	Msg     string
 }
 
+// SendMessage send message to bing chat and return a response with message(string) channel
+// which you should receive the element from channel to get truly response message
 func (b *BingChatHub) SendMessage(msg string) (*MsgResp, error) {
 	if b.chatSession == nil {
 		err := b.createConversation()
 		if err != nil {
-			log.Println("create conversation error: ", err)
 			return nil, err
 		}
 	}
@@ -242,7 +269,7 @@ func (b *BingChatHub) SendMessage(msg string) (*MsgResp, error) {
 				lastMsg = msg
 			}
 			if resp.Type == 2 {
-				b.wsConn.Close()
+				_ = b.wsConn.Close()
 				break
 			}
 		}
@@ -255,10 +282,10 @@ func (b *BingChatHub) SendMessage(msg string) (*MsgResp, error) {
 func (b *BingChatHub) getTraceId() string {
 	rand.Seed(time.Now().UnixNano())
 	length := 32
-	bytes := make([]byte, length)
+	_bytes := make([]byte, length)
 	str := "0123456789abcdef"
 	for i := 0; i < length; i++ {
-		bytes[i] = byte(str[rand.Intn(len(str))])
+		_bytes[i] = byte(str[rand.Intn(len(str))])
 	}
-	return string(bytes)
+	return string(_bytes)
 }
