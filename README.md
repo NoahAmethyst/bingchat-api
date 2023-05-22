@@ -3,7 +3,7 @@
 
 ### Requirements
 * Have access to https://bing.com/chat
-* Supported country or proxy with NewBing or 
+* Supported country or proxy with NewBing
 
 ### Export Bingchat Cookie
 - Install [Cookie-Editor](https://chrome.google.com/webstore/detail/cookie-editor/hlkenndednhfkekhgcdicdfddnkalmdm?hl=en) in your browser.
