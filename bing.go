@@ -5,9 +5,9 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"github.com/bwmarrin/snowflake"
 	"io"
 	"log"
-	"math/rand"
 	"net/http"
 	"strings"
 	"sync"
@@ -168,7 +168,7 @@ func (b *BingChatHub) initWsConnect() error {
 type MsgResp struct {
 	Suggest []string
 	Notify  chan string
-	Msg     string
+	Title   string
 }
 
 // SendMessage send message to bing chat and return a response with message(string) channel
@@ -184,18 +184,7 @@ func (b *BingChatHub) SendMessage(msg string) (*MsgResp, error) {
 	if err != nil {
 		return nil, err
 	}
-	if b.sendMessage == nil {
-		b.sendMessage = b.conversationStyle.TmpMessage()
-		b.sendMessage.Arguments[0].ConversationSignature = b.chatSession.ConversationSignature
-		b.sendMessage.Arguments[0].Participant.Id = b.chatSession.ClientID
-		b.sendMessage.Arguments[0].ConversationId = b.chatSession.ConversationID
-	}
-	b.sendMessage.Arguments[0].TraceId = b.getTraceId()
-	b.sendMessage.Arguments[0].IsStartOfSession = b.invocationId == 0
-	b.sendMessage.Arguments[0].Message.Text = msg
-	b.sendMessage.Arguments[0].Message.Timestamp = time.Now()
-	b.sendMessage.InvocationId = fmt.Sprint(b.invocationId)
-	b.invocationId += 1
+	b.beforeSendMsg(msg)
 	msgData, _ := json.Marshal(b.sendMessage)
 	b.Lock()
 	err = b.wsConn.WriteMessage(websocket.BinaryMessage, append(msgData, []byte(DELIMITER)...))
@@ -208,7 +197,7 @@ func (b *BingChatHub) SendMessage(msg string) (*MsgResp, error) {
 	}
 	go func() {
 		var startRev bool
-		lastMsg := ""
+		var lastMsg string
 		defer close(msgRespChannel.Notify)
 		for {
 			_, data, err := b.wsConn.ReadMessage()
@@ -231,12 +220,11 @@ func (b *BingChatHub) SendMessage(msg string) (*MsgResp, error) {
 			for _, message := range resp.Item.Messages {
 				if message.MessageType == "Disengaged" {
 					b.Reset()
-
 					return
 				}
 			}
 
-			if resp.Type == 1 && len(resp.Arguments) > 0 && resp.Arguments[0].Cursor.J != "" {
+			if resp.Type == 1 && len(resp.Arguments) > 0 && len(resp.Arguments[0].Cursor.J) > 0 {
 				startRev = true
 				continue
 			}
@@ -258,11 +246,11 @@ func (b *BingChatHub) SendMessage(msg string) (*MsgResp, error) {
 					break
 				}
 				msg := strings.TrimSpace(resp.Arguments[0].Messages[0].Text)
-				msgRespChannel.Msg = msg
+				msgRespChannel.Title = msg
 				if len(lastMsg) > len(msg) {
 					continue
 				}
-				if msg == "" || msg[len(lastMsg):] == "" {
+				if len(msg) == 0 || len(msg[len(lastMsg):]) == 0 {
 					continue
 				}
 				msgRespChannel.Notify <- msg[len(lastMsg):]
@@ -273,19 +261,30 @@ func (b *BingChatHub) SendMessage(msg string) (*MsgResp, error) {
 				break
 			}
 		}
-
 	}()
 
 	return msgRespChannel, nil
 }
 
-func (b *BingChatHub) getTraceId() string {
-	rand.Seed(time.Now().UnixNano())
-	length := 32
-	_bytes := make([]byte, length)
-	str := "0123456789abcdef"
-	for i := 0; i < length; i++ {
-		_bytes[i] = byte(str[rand.Intn(len(str))])
+func (b *BingChatHub) beforeSendMsg(msg string) {
+	if b.sendMessage == nil {
+		b.sendMessage = b.conversationStyle.TmpMessage()
+		b.sendMessage.Arguments[0].ConversationSignature = b.chatSession.ConversationSignature
+		b.sendMessage.Arguments[0].Participant.Id = b.chatSession.ClientID
+		b.sendMessage.Arguments[0].ConversationId = b.chatSession.ConversationID
 	}
-	return string(_bytes)
+	b.sendMessage.Arguments[0].TraceId = b.getTraceId()
+	b.sendMessage.Arguments[0].IsStartOfSession = b.invocationId == 0
+	b.sendMessage.Arguments[0].Message.Text = msg
+	b.sendMessage.Arguments[0].Message.Timestamp = time.Now()
+	b.sendMessage.InvocationId = fmt.Sprint(b.invocationId)
+	b.invocationId += 1
+}
+
+func (b *BingChatHub) getTraceId() string {
+	//Ignore error cause that not ganna happen when use constant 1.
+	node, _ := snowflake.NewNode(1)
+
+	return node.Generate().String()
+
 }
