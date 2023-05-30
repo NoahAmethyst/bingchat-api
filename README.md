@@ -9,6 +9,9 @@
 - Install [Cookie-Editor](https://chrome.google.com/webstore/detail/cookie-editor/hlkenndednhfkekhgcdicdfddnkalmdm?hl=en) in your browser.
 - Export `bing.com` cookies with json
 
+### Warn
+This project currently **does not support** parallel sessions (multi sessions)
+
 ### Use
 ```go
 go get github.com/NoahAmethyst/bingchat-api
