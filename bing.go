@@ -198,7 +198,7 @@ func (b *BingChatHub) SendMessage(msg string) (*MsgResp, error) {
 		Notify: make(chan string, 1),
 	}
 
-	go func() {
+	go func(msgRespChannel *MsgResp) {
 		var startRev bool
 		var lastMsg string
 		defer close(msgRespChannel.Notify)
@@ -264,7 +264,7 @@ func (b *BingChatHub) SendMessage(msg string) (*MsgResp, error) {
 				break
 			}
 		}
-	}()
+	}(msgRespChannel)
 
 	return msgRespChannel, nil
 }
