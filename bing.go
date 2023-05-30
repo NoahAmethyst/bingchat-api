@@ -17,6 +17,14 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+type IBingChat interface {
+	Reset(style ...ConversationStyle)
+	SendMessage(msg string) (*MsgResp, error)
+	Style() ConversationStyle
+	Close()
+	CheckAlive() bool
+}
+
 type BingChatHub struct {
 	sync.Mutex
 	wsConn            *websocket.Conn
@@ -38,14 +46,6 @@ func (b *BingChatHub) buildHeaders(data map[string]string) http.Header {
 	return headers
 }
 
-type IBingChat interface {
-	Reset(style ...ConversationStyle)
-	SendMessage(msg string) (*MsgResp, error)
-	Style() ConversationStyle
-	Close()
-	CheckAlive() bool
-}
-
 func NewBingChat(cookiesJson string, style ConversationStyle, timeout time.Duration) (IBingChat, error) {
 	var cookies []*http.Cookie
 	_ = json.Unmarshal([]byte(cookiesJson), &cookies)
@@ -62,7 +62,7 @@ func NewBingChat(cookiesJson string, style ConversationStyle, timeout time.Durat
 	}, nil
 }
 
-// Reset reset conversation style,the supported style list is:
+// Reset conversation style,the supported style list is:
 // ConversationCreateStyle
 // ConversationBalanceStyle
 // ConversationPreciseStyle
@@ -181,9 +181,11 @@ func (b *BingChatHub) SendMessage(msg string) (*MsgResp, error) {
 		}
 	}
 	err := b.initWsConnect()
+
 	if err != nil {
 		return nil, err
 	}
+
 	b.beforeSendMsg(msg)
 	msgData, _ := json.Marshal(b.sendMessage)
 	b.Lock()
@@ -195,6 +197,7 @@ func (b *BingChatHub) SendMessage(msg string) (*MsgResp, error) {
 	msgRespChannel := &MsgResp{
 		Notify: make(chan string, 1),
 	}
+
 	go func() {
 		var startRev bool
 		var lastMsg string
