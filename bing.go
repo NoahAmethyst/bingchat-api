@@ -23,6 +23,7 @@ type IBingChat interface {
 	Style() ConversationStyle
 	Close()
 	CheckAlive() bool
+	SetRemote(url, ws string)
 }
 
 type BingChatHub struct {
@@ -35,6 +36,8 @@ type BingChatHub struct {
 	sendMessage       *SendMessage
 	conversationStyle ConversationStyle
 	timeout           time.Duration
+	conversationUrl   string
+	conversationWs    string
 }
 
 func (b *BingChatHub) buildHeaders(data map[string]string) http.Header {
@@ -59,6 +62,8 @@ func NewBingChat(cookiesJson string, style ConversationStyle, timeout time.Durat
 			Timeout: timeout,
 		},
 		conversationStyle: style,
+		conversationUrl:   conversationUrl,
+		conversationWs:    conversationWs,
 	}, nil
 }
 
@@ -81,7 +86,18 @@ func (b *BingChatHub) Close() {
 	_ = b.wsConn.Close()
 }
 
-// CheckAlive check whether websocket collection is alive
+// SetRemote can set your own url & ws which available with new bing chat
+func (b *BingChatHub) SetRemote(url, ws string) {
+	if len(url) > 0 {
+		b.conversationUrl = url
+	}
+
+	if len(ws) > 0 {
+		b.conversationWs = ws
+	}
+
+}
+
 func (b *BingChatHub) CheckAlive() bool {
 	err := b.wsConn.WriteMessage(websocket.PingMessage, []byte{})
 	if err != nil {
@@ -102,7 +118,7 @@ func (b *BingChatHub) Style() ConversationStyle {
 }
 
 func (b *BingChatHub) createConversation() error {
-	req, err := http.NewRequest(http.MethodGet, conversationUrl, nil)
+	req, err := http.NewRequest(http.MethodGet, b.conversationUrl, nil)
 	if err != nil {
 		return err
 	}
@@ -135,9 +151,8 @@ func (b *BingChatHub) initWsConnect() error {
 	dial.Proxy = http.ProxyFromEnvironment
 	dial.HandshakeTimeout = b.timeout
 	dial.EnableCompression = true
-
 	dial.TLSClientConfig = &tls.Config{}
-	conn, resp, err := dial.Dial(conversationWs, b.buildHeaders(wsHeader))
+	conn, resp, err := dial.Dial(b.conversationWs, b.buildHeaders(wsHeader))
 	if err != nil {
 		return err
 	}
@@ -146,6 +161,7 @@ func (b *BingChatHub) initWsConnect() error {
 	}
 
 	b.wsConn = conn
+
 	err = conn.WriteMessage(websocket.BinaryMessage, []byte(`{"protocol":"json","version":1}`+DELIMITER))
 	if err != nil {
 		return fmt.Errorf("write json response: %v", err)

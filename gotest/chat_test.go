@@ -13,21 +13,23 @@ func Test_ConversationStream(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	message, err := chat.SendMessage("how is the weather today in Seattle")
-	if err != nil {
-		panic(err)
-	}
-	var respBuilder strings.Builder
-	for {
-		msg, ok := <-message.Notify
-		if !ok {
-			break
+	questions := [3]string{"how is weather today in Nanjing?", "How to fry a steak", "Who was the winner of the last World Cup?"}
+
+	for _, _question := range questions {
+
+		message, err := chat.SendMessage(_question)
+		if err != nil {
+			panic(err)
 		}
-		respBuilder.WriteString(msg)
+		var respBuilder strings.Builder
+		for {
+			msg, ok := <-message.Notify
+			if !ok {
+				break
+			}
+			respBuilder.WriteString(msg)
+		}
+		t.Logf("suggest:%+v\nanswer:%+v", message.Suggest, respBuilder.String())
 	}
-
-	t.Logf("%+v", message.Suggest)
-
-	t.Logf("%s", respBuilder.String())
 
 }
