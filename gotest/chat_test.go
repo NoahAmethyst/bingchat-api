@@ -13,23 +13,30 @@ func Test_ConversationStream(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	questions := [3]string{"how is weather today in Nanjing?", "How to fry a steak", "Who was the winner of the last World Cup?"}
+	question := "how is weather today in Seattle?"
 
-	for _, _question := range questions {
-
-		message, err := chat.SendMessage(_question)
-		if err != nil {
-			panic(err)
-		}
-		var respBuilder strings.Builder
-		for {
-			msg, ok := <-message.Notify
-			if !ok {
-				break
-			}
-			respBuilder.WriteString(msg)
-		}
-		t.Logf("suggest:%+v\nanswer:%+v", message.Suggest, respBuilder.String())
+	message, err := chat.SendMessage(question)
+	if err != nil {
+		panic(err)
 	}
+	var respBuilder strings.Builder
+	for {
+		msg, ok := <-message.Notify
+		if !ok {
+			break
+		}
+		respBuilder.WriteString(msg)
+	}
+	t.Logf("suggest:%+v\nanswer:%+v", message.Suggest, respBuilder.String())
 
+	t.Logf("%+v", chat.CheckAlive())
+
+}
+
+func Test_CheckAlive(t *testing.T) {
+	chat, err := bingchat_api.NewBingChat(os.Getenv("COOKIE"), bingchat_api.ConversationBalanceStyle, 2*time.Minute)
+	if err != nil {
+		panic(err)
+	}
+	t.Logf("%+v", chat.CheckAlive())
 }

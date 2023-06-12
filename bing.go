@@ -83,7 +83,9 @@ func (b *BingChatHub) Reset(style ...ConversationStyle) {
 
 // Close the websocket collection with new bing chat
 func (b *BingChatHub) Close() {
-	_ = b.wsConn.Close()
+	if b.wsConn != nil {
+		_ = b.wsConn.Close()
+	}
 }
 
 // SetRemote can set your own url & ws which available with new bing chat
@@ -99,6 +101,9 @@ func (b *BingChatHub) SetRemote(url, ws string) {
 }
 
 func (b *BingChatHub) CheckAlive() bool {
+	if b.wsConn == nil {
+		return false
+	}
 	err := b.wsConn.WriteMessage(websocket.PingMessage, []byte{})
 	if err != nil {
 		return false
