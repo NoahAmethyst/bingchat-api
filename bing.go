@@ -152,6 +152,9 @@ func (b *BingChatHub) createConversation() error {
 }
 
 func (b *BingChatHub) initWsConnect() error {
+	if b.CheckAlive() {
+		return nil
+	}
 	dial := websocket.DefaultDialer
 	dial.Proxy = http.ProxyFromEnvironment
 	dial.HandshakeTimeout = b.timeout
@@ -281,7 +284,6 @@ func (b *BingChatHub) SendMessage(msg string) (*MsgResp, error) {
 				lastMsg = msg
 			}
 			if resp.Type == 2 {
-				_ = b.wsConn.Close()
 				break
 			}
 		}
