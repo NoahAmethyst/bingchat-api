@@ -12,7 +12,7 @@
 ### Warn
 This project currently **support** parallel sessions (multi sessions) and context
 
-**Please make sure that close websocket at the end of conversation**
+**Please make sure that websocket be closed at the end of conversation**
 ### Use
 ```go
 go get github.com/NoahAmethyst/bingchat-api
