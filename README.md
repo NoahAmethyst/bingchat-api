@@ -10,12 +10,18 @@
 - Export `bing.com` cookies with json
 
 ### Warn
-This project currently **does not support** parallel sessions (multi sessions)
+This project currently **support** parallel sessions (multi sessions) and context
 
+**Please make sure that close websocket at the end of conversation**
 ### Use
 ```go
 go get github.com/NoahAmethyst/bingchat-api
 ```
+
+### Example
+
+You can see example codes in [chat_test.go](gotest%2Fchat_test.go) 
+which include conversation with context and multi conversations 
 
 ### Test
 ```go
@@ -34,6 +40,11 @@ func Test_Conversation(t *testing.T) {
     if err != nil {
         panic(err)
     }
+
+    defer func() {
+        chat.Close()
+        t.Logf("%+v", chat.CheckAlive())
+    }()
 	
     message, err := chat.SendMessage("how is the weather today in Seattle")
     if err != nil {
