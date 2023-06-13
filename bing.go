@@ -190,9 +190,10 @@ func (b *BingChatHub) initWsConnect() error {
 }
 
 type MsgResp struct {
-	Suggest []string
-	Notify  chan string
-	Title   string
+	Suggest    []string
+	Notify     chan string
+	Title      string
+	References map[string]string
 }
 
 // SendMessage send message to bing chat and return a response with message(string) channel
@@ -258,18 +259,28 @@ func (b *BingChatHub) SendMessage(msg string) (*MsgResp, error) {
 			if !startRev {
 				continue
 			}
+
+			//response continue
 			if resp.Type == 1 && len(resp.Arguments) > 0 && len(resp.Arguments[0].Messages) > 0 {
-				if resp.Arguments[0].Messages[0].SuggestedResponses != nil {
-					var suggests []string
+
+				if len(resp.Arguments[0].Messages[0].SuggestedResponses) > 0 {
+					suggests := make([]string, 0, len(resp.Arguments[0].Messages[0].SuggestedResponses))
 					for _, suggest := range resp.Arguments[0].Messages[0].SuggestedResponses {
 						suggests = append(suggests, suggest.Text)
 					}
 					msgRespChannel.Suggest = suggests
 				}
 
+				if len(resp.Arguments[0].Messages[0].SourceAttributions) > 0 {
+					references := make(map[string]string)
+					for _, source := range resp.Arguments[0].Messages[0].SourceAttributions {
+						references[source.ProviderDisplayName] = source.SeeMoreUrl
+					}
+					msgRespChannel.References = references
+				}
+
 				if resp.Arguments[0].Messages[0].MessageType == "Disengaged" {
 					b.Reset()
-
 					break
 				}
 				msg := strings.TrimSpace(resp.Arguments[0].Messages[0].Text)
@@ -283,6 +294,8 @@ func (b *BingChatHub) SendMessage(msg string) (*MsgResp, error) {
 				msgRespChannel.Notify <- msg[len(lastMsg):]
 				lastMsg = msg
 			}
+
+			//response done
 			if resp.Type == 2 {
 				break
 			}

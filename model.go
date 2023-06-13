@@ -105,7 +105,7 @@ type MessageResp struct {
 					Size string `json:"size"`
 				} `json:"body"`
 			} `json:"adaptiveCards"`
-			SourceAttributions []interface{} `json:"sourceAttributions"`
+			SourceAttributions []SourceAttribution `json:"sourceAttributions"`
 			Feedback           struct {
 				Tag       interface{} `json:"tag"`
 				UpdatedOn interface{} `json:"updatedOn"`
@@ -132,4 +132,10 @@ type MessageResp struct {
 		} `json:"messages"`
 		RequestId string `json:"requestId"`
 	} `json:"arguments"`
+}
+
+type SourceAttribution struct {
+	ProviderDisplayName string `json:"providerDisplayName"`
+	SeeMoreUrl          string `json:"seeMoreUrl"`
+	SearchQuery         string `json:"searchQuery"`
 }
