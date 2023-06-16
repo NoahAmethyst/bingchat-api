@@ -32,8 +32,9 @@ func (c ConversationStyle) String() string {
 		return "Create"
 	case ConversationPreciseStyle:
 		return "Precise"
+	default:
+		return ""
 	}
-	return ""
 }
 
 func (c ConversationStyle) TmpMessage() *SendMessage {

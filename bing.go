@@ -72,6 +72,9 @@ func NewBingChat(cookiesJson string, style ConversationStyle, timeout time.Durat
 // ConversationBalanceStyle
 // ConversationPreciseStyle
 func (b *BingChatHub) Reset(style ...ConversationStyle) {
+	if b.wsConn == nil {
+		return
+	}
 	if len(style) > 0 {
 		b.conversationStyle = style[0]
 	}
