@@ -1,6 +1,8 @@
 
 # Bing Chat  
 
+*WARN Due to the use of robot check in bingChat, the api is temporarily unuseful.*
+
 ### Requirements
 * Have access to https://bing.com/chat
 * Supported country or proxy with NewBing
